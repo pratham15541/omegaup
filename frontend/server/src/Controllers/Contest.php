@@ -8,6 +8,7 @@ namespace OmegaUp\Controllers;
  * @psalm-type PageItem=array{class: string, label: string, page: int, url?: string}
  * @psalm-type PrivacyStatement=array{markdown: string, statementType: string, gitObjectId?: string}
  * @psalm-type Contest=array{acl_id?: int, admission_mode: string, alias: string, contest_id: int, description: string, feedback?: string, finish_time: \OmegaUp\Timestamp, languages?: null|string, last_updated: \OmegaUp\Timestamp, original_finish_time?: \OmegaUp\Timestamp, score_mode: string, penalty?: int, penalty_calc_policy?: string, penalty_type?: string, points_decay_factor?: float, problemset_id: int, recommended: bool, rerun_id: int|null, scoreboard?: int, scoreboard_url: string, scoreboard_url_admin: string, show_scoreboard_after?: int, start_time: \OmegaUp\Timestamp, submissions_gap?: int, title: string, urgent?: int, window_length: int|null}
+ * @psalm-type ContestProblemChangeLog=array{change_type: string, problemAlias: string, changedBy: string, timestamp: \OmegaUp\Timestamp}
  * @psalm-type NavbarProblemsetProblem=array{acceptsSubmissions: bool, alias: string, bestScore: int, hasRuns: bool, maxScore: float|int, text: string, myBestScore?: float|null, hasMyRuns?: bool|null}
  * @psalm-type ContestUser=array{access_time: \OmegaUp\Timestamp|null, country_id: null|string, end_time: \OmegaUp\Timestamp|null, is_owner: int|null, username: string}
  * @psalm-type ContestGroup=array{alias: string, name: string}
@@ -3366,6 +3367,53 @@ class Contest extends \OmegaUp\Controllers\Controller {
             )
         );
 
+        $now = \OmegaUp\Time::get();
+        if (
+            !is_null($contest->start_time) &&
+            !is_null($contest->finish_time) &&
+            $contest->start_time->time <= $now &&
+            $contest->finish_time->time >= $now
+        ) {
+            $changeType = is_null(
+                $originalProblemsetProblem
+            ) ? 'added' : 'modified';
+
+            // Insert row into the log table
+            \OmegaUp\DAO\ContestProblemChangeLog::create(
+                new \OmegaUp\DAO\VO\ContestProblemChangeLog([
+                    'contest_id' => $contest->contest_id,
+                    'problem_id' => $problem->problem_id,
+                    'user_id' => $r->identity->user_id,
+                    'change_type' => $changeType,
+                ])
+            );
+
+            // Broadcast real-time event via WebSocket — zero DB writes,
+            // delivers ui.info() toast to all connected participants instantly.
+            try {
+                \OmegaUp\Grader::getInstance()->broadcast(
+                    $contest->alias,
+                    intval($contest->problemset_id),
+                    null,
+                    json_encode([
+                        'message' => '/contest/problem/update/',
+                        'type' => $changeType,
+                        'contest_alias' => $contest->alias,
+                        'problem_alias' => $problemAlias,
+                    ]),
+                    true,  // public broadcast to all participants
+                    null,
+                    -1,
+                    false
+                );
+            } catch (\Exception $e) {
+                self::$log->error(
+                    'Failed to broadcast contest problem change',
+                    ['exception' => $e]
+                );
+            }
+        }
+
         $solutionStatus = \OmegaUp\Controllers\Problem::SOLUTION_NOT_FOUND;
 
         if (\OmegaUp\DAO\Problems::isVisible($problem)) {
@@ -3429,7 +3477,96 @@ class Contest extends \OmegaUp\Controllers\Controller {
             )
         );
 
+        // Log the problem removal and notify participants via WebSocket
+        // if the contest is currently active.
+        $contest = $params['contest'];
+        $problem = $params['problem'];
+        $now = \OmegaUp\Time::get();
+        if (
+            !is_null($contest->start_time) &&
+            !is_null($contest->finish_time) &&
+            $contest->start_time->time <= $now &&
+            $contest->finish_time->time >= $now
+        ) {
+            // Insert ONE row into the log table
+            \OmegaUp\DAO\ContestProblemChangeLog::create(
+                new \OmegaUp\DAO\VO\ContestProblemChangeLog([
+                    'contest_id' => $contest->contest_id,
+                    'problem_id' => $problem->problem_id,
+                    'user_id' => $r->identity->user_id,
+                    'change_type' => 'removed',
+                ])
+            );
+
+            // Broadcast real-time toast via WebSocket
+            try {
+                \OmegaUp\Grader::getInstance()->broadcast(
+                    $contest->alias,
+                    intval($contest->problemset_id),
+                    null,
+                    json_encode([
+                        'message' => '/contest/problem/update/',
+                        'type' => 'removed',
+                        'contest_alias' => $contest->alias,
+                        'problem_alias' => $problemAlias,
+                    ]),
+                    true,
+                    null,
+                    -1,
+                    false
+                );
+            } catch (\Exception $e) {
+                self::$log->error(
+                    'Failed to broadcast contest problem removal',
+                    ['exception' => $e]
+                );
+            }
+        }
+
         return ['status' => 'ok'];
+    }
+
+     /**
+     * Returns the problem change log for a contest.
+     * Queries the Contest_Problem_Change_Log table directly to get the change history of problems in a contest, including additions, removals, and modifications.
+     *
+     * @return array{logs: list<ContestProblemChangeLog>}
+     *
+     * @omegaup-request-param string $contest_alias
+     */
+    public static function apiProblemChangeLogs(\OmegaUp\Request $r): array {
+        $r->ensureIdentity();
+
+        $contestAlias = $r->ensureString(
+            'contest_alias',
+            fn(string $alias) => \OmegaUp\Validators::alias($alias)
+        );
+
+        $contest = \OmegaUp\DAO\Contests::getByAlias($contestAlias);
+        if (is_null($contest) || is_null($contest->contest_id)) {
+            throw new \OmegaUp\Exceptions\NotFoundException(
+                'contestNotFound'
+            );
+        }
+
+        $logs = \OmegaUp\DAO\ContestProblemChangeLog::getByContestId(
+            intval($contest->contest_id)
+        );
+
+        // Transform column names to match frontend expectations
+        $transformedLogs = [];
+        foreach ($logs as $log) {
+            $transformedLogs[] = [
+                'change_type' => $log['change_type'],
+                'problemAlias' => $log['problem_alias'],
+                'changedBy' => $log['changed_by'],
+                'timestamp' => $log['timestamp'],
+            ];
+        }
+
+        return [
+            'logs' => $transformedLogs,
+        ];
     }
 
     /**
