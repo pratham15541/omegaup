@@ -3369,7 +3369,6 @@ class Contest extends \OmegaUp\Controllers\Controller {
 
         $now = \OmegaUp\Time::get();
         if (
-            !is_null($contest->finish_time) &&
             $contest->start_time->time <= $now &&
             $contest->finish_time->time >= $now
         ) {
@@ -3482,7 +3481,6 @@ class Contest extends \OmegaUp\Controllers\Controller {
         $problem = $params['problem'];
         $now = \OmegaUp\Time::get();
         if (
-            !is_null($contest->finish_time) &&
             $contest->start_time->time <= $now &&
             $contest->finish_time->time >= $now
         ) {
