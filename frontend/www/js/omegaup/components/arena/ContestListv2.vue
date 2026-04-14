@@ -201,7 +201,7 @@
           :active="currentTab === ContestTab.Current"
           @click="currentTab = ContestTab.Current"
         >
-          <template v-if="loading && contestListEmpty">
+          <template v-if="loading || refreshing">
             <div
               v-for="index in 3"
               :key="`current-${index}`"
@@ -210,10 +210,7 @@
               <omegaup-contest-skeleton></omegaup-contest-skeleton>
             </div>
           </template>
-          <div
-            v-else-if="contestListEmpty && !refreshing"
-            class="empty-category"
-          >
+          <div v-else-if="contestListEmpty" class="empty-category">
             {{ T.contestListEmpty }}
           </div>
           <template v-else>
@@ -274,7 +271,7 @@
           :active="currentTab === ContestTab.Future"
           @click="currentTab = ContestTab.Future"
         >
-          <template v-if="loading && contestListEmpty">
+          <template v-if="loading || refreshing">
             <div
               v-for="index in 3"
               :key="`future-${index}`"
@@ -283,10 +280,7 @@
               <omegaup-contest-skeleton></omegaup-contest-skeleton>
             </div>
           </template>
-          <div
-            v-else-if="contestListEmpty && !refreshing"
-            class="empty-category"
-          >
+          <div v-else-if="contestListEmpty" class="empty-category">
             {{ T.contestListEmpty }}
           </div>
           <template v-else>
@@ -350,7 +344,7 @@
           :active="currentTab === ContestTab.Past"
           @click="currentTab = ContestTab.Past"
         >
-          <template v-if="loading && contestListEmpty">
+          <template v-if="loading || refreshing">
             <div
               v-for="index in 3"
               :key="`past-${index}`"
@@ -359,10 +353,7 @@
               <omegaup-contest-skeleton></omegaup-contest-skeleton>
             </div>
           </template>
-          <div
-            v-else-if="contestListEmpty && !refreshing"
-            class="empty-category"
-          >
+          <div v-else-if="contestListEmpty" class="empty-category">
             {{ T.contestListEmpty }}
           </div>
           <template v-else>
@@ -551,7 +542,7 @@ class ArenaContestList extends Vue {
     this.currentQuery = '';
     this.onSearchQuery();
   }
-  fetchInitialContests(preserveList: boolean = false) {
+  fetchInitialContests() {
     const urlObj = new URL(window.location.href);
     const params: UrlParams = {
       page: 1,
@@ -561,13 +552,8 @@ class ArenaContestList extends Vue {
       filter: this.currentFilter,
       replaceState: this.isFromBrowserNavigation || this.isInitialLoad,
     };
-    if (preserveList) {
-      // For sort/filter changes: keep the old list visible, show refreshing indicator
-      this.refreshing = true;
-    } else {
-      // For initial load and tab changes: clear the list and show skeletons
-      Vue.set(this.contests, this.currentTab, []);
-    }
+    // Reset the contest list for this tab to avoid stale data
+    Vue.set(this.contests, this.currentTab, []);
     this.currentPage = 1;
     this.hasMore = true;
     // Reset the navigation and initial load flags after using them
@@ -616,6 +602,10 @@ class ArenaContestList extends Vue {
 
   fetchPage(params: UrlParams, urlObj: URL) {
     this.$emit('fetch-page', { params, urlObj });
+    // Turn off refreshing after a short delay to allow parent component to respond
+    setTimeout(() => {
+      this.refreshing = false;
+    }, 1000);
   }
 
   currentContestDate(contest: types.ContestListItem): string {
@@ -767,7 +757,7 @@ class ArenaContestList extends Vue {
     oldValue: undefined | ContestOrder,
   ) {
     if (typeof oldValue === 'undefined') return;
-    this.fetchInitialContests(true);
+    this.fetchInitialContests();
   }
 
   @Watch('currentFilter', { immediate: true, deep: true })
@@ -776,23 +766,7 @@ class ArenaContestList extends Vue {
     oldValue: undefined | ContestFilter,
   ) {
     if (typeof oldValue === 'undefined') return;
-    this.fetchInitialContests(true);
-  }
-
-  // Clear refreshing flag when new data arrives (works for both cached and API responses)
-  @Watch('contestList')
-  onContestListDataChanged() {
-    if (this.refreshing) {
-      this.refreshing = false;
-    }
-  }
-
-  // Also clear refreshing when loading transitions from true to false (safety net)
-  @Watch('loading')
-  onLoadingChanged(newValue: boolean, oldValue: boolean) {
-    if (!newValue && oldValue && this.refreshing) {
-      this.refreshing = false;
-    }
+    this.fetchInitialContests();
   }
 }
 
@@ -889,25 +863,6 @@ export default ArenaContestList;
   font-size: 200%;
   margin: 1em;
   color: var(--arena-contest-list-empty-category-font-color);
-}
-
-.refreshing-content {
-  opacity: 0.5;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-.contest-list-refresh-container {
-  position: relative;
-}
-
-.refreshing-overlay {
-  position: absolute;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  pointer-events: none;
 }
 
 .btns-group {

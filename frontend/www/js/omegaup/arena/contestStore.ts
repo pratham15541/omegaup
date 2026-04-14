@@ -68,17 +68,16 @@ export const contestStoreConfig = {
       const existingContests =
         (page || 1) === 1 ? [] : state.contests[name] || [];
 
-        // Filter out duplicates by contest_id
-        const newContests = response.results.filter(
-          (newContest) =>
-            !existingContests.some(
-              (existing) => existing.contest_id === newContest.contest_id,
-            ),
-        );
+      // Filter out duplicates by contest_id
+      const newContests = response.results.filter(
+        (newContest) =>
+          !existingContests.some(
+            (existing) => existing.contest_id === newContest.contest_id,
+          ),
+      );
 
-        // Append new contests to the existing list
-        Vue.set(state.contests, name, [...existingContests, ...newContests]);
-      }
+      // Append new contests to the existing list
+      Vue.set(state.contests, name, [...existingContests, ...newContests]);
       Vue.set(state.countContests, name, response.number_of_results);
 
       // Update cache with the full response
@@ -94,7 +93,6 @@ export const contestStoreConfig = {
       payload: NamedContestListRequest,
     ) {
       const cacheKey = generateCacheKey(payload.requestParams);
-      const isReplace = payload.requestParams.page === 1;
       if (state.cache[cacheKey]) {
         commit('updateList', {
           name: payload.name,
