@@ -1754,7 +1754,6 @@ const translations: { [key: string]: string; } = {
   rankSolved: "Problemas",
   rankingNoUsers: "No tenemos datos para mostrar en la gr\u00e1fica del Ranking.",
   readmeAlreadyReported: "Ya has reportado este README.",
-  recordAlreadyExists: "El registro ya existe.",
   recordNotFound: "Registro no encontrado.",
   redisAuthenticationFailed: "Fall\u00f3 la autenticaci\u00f3n de Redis",
   redisConnectionFailed: "No se pudo conectar a Redis en %(host):%(port)",
