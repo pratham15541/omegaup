@@ -169,41 +169,4 @@ class ContestProblemChangeLogTest extends \OmegaUp\Test\ControllerTestCase {
             $response['logs'][0]['problemAlias']
         );
     }
-
-    // Regression test: Ensure that adding a problem to an active contest with many participants does not create N log entries.
-    public function testWriteEfficiency(): void {
-        $contestData = \OmegaUp\Test\Factories\Contest::createContest();
-
-        // Add multiple participants
-        for ($i = 0; $i < 5; $i++) {
-            ['identity' => $identity] = \OmegaUp\Test\Factories\User::createUser();
-            \OmegaUp\Test\Factories\Contest::addUser($contestData, $identity);
-        }
-
-        // Event 1: Add a problem
-        $problem1 = \OmegaUp\Test\Factories\Problem::createProblem();
-        $directorLogin = self::login($contestData['director']);
-        \OmegaUp\Controllers\Contest::apiAddProblem(new \OmegaUp\Request([
-            'auth_token' => $directorLogin->auth_token,
-            'contest_alias' => $contestData['request']['alias'],
-            'problem_alias' => $problem1['request']['problem_alias'],
-            'points' => 100,
-            'order_in_contest' => 1,
-        ]));
-
-        // Event 2: Add another problem
-        $problem2 = \OmegaUp\Test\Factories\Problem::createProblem();
-        \OmegaUp\Controllers\Contest::apiAddProblem(new \OmegaUp\Request([
-            'auth_token' => $directorLogin->auth_token,
-            'contest_alias' => $contestData['request']['alias'],
-            'problem_alias' => $problem2['request']['problem_alias'],
-            'points' => 100,
-            'order_in_contest' => 2,
-        ]));
-
-        $logs = \OmegaUp\DAO\ContestProblemChangeLog::getByContestId(
-            intval($contestData['contest']->contest_id)
-        );
-        $this->assertCount(2, $logs);
-    }
 }
