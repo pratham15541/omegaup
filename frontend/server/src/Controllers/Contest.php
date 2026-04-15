@@ -8,7 +8,7 @@ namespace OmegaUp\Controllers;
  * @psalm-type PageItem=array{class: string, label: string, page: int, url?: string}
  * @psalm-type PrivacyStatement=array{markdown: string, statementType: string, gitObjectId?: string}
  * @psalm-type Contest=array{acl_id?: int, admission_mode: string, alias: string, contest_id: int, description: string, feedback?: string, finish_time: \OmegaUp\Timestamp, languages?: null|string, last_updated: \OmegaUp\Timestamp, original_finish_time?: \OmegaUp\Timestamp, score_mode: string, penalty?: int, penalty_calc_policy?: string, penalty_type?: string, points_decay_factor?: float, problemset_id: int, recommended: bool, rerun_id: int|null, scoreboard?: int, scoreboard_url: string, scoreboard_url_admin: string, show_scoreboard_after?: int, start_time: \OmegaUp\Timestamp, submissions_gap?: int, title: string, urgent?: int, window_length: int|null}
- * @psalm-type ContestProblemChangeLog=array{change_type: string, problemAlias: string, changedBy: string, timestamp: \OmegaUp\Timestamp}
+ * @psalm-type ContestProblemChangeLog=array{change_type: string, changedBy: string, problemAlias: string, timestamp: \OmegaUp\Timestamp}
  * @psalm-type NavbarProblemsetProblem=array{acceptsSubmissions: bool, alias: string, bestScore: int, hasRuns: bool, maxScore: float|int, text: string, myBestScore?: float|null, hasMyRuns?: bool|null}
  * @psalm-type ContestUser=array{access_time: \OmegaUp\Timestamp|null, country_id: null|string, end_time: \OmegaUp\Timestamp|null, is_owner: int|null, username: string}
  * @psalm-type ContestGroup=array{alias: string, name: string}
@@ -3554,8 +3554,8 @@ class Contest extends \OmegaUp\Controllers\Controller {
         foreach ($logs as $log) {
             $transformedLogs[] = [
                 'change_type' => $log['change_type'],
-                'problemAlias' => $log['problem_alias'],
                 'changedBy' => $log['changed_by'],
+                'problemAlias' => $log['problem_alias'],
                 'timestamp' => $log['timestamp'],
             ];
         }
