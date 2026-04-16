@@ -78,10 +78,24 @@ namespace OmegaUp\Controllers;
  */
 
 class Contest extends \OmegaUp\Controllers\Controller {
+    /** @var null|\OmegaUp\Broadcaster */
+    public static $broadcaster = null;
+
     const SHOW_INTRO = true;
     const MAX_CONTEST_LENGTH_SECONDS = 60 * 60 * 24 * 31; // 31 days
     const MAX_CONTEST_LENGTH_SYSADMIN_SECONDS = 60 * 60 * 24 * 60; // 60 days
     const CONTEST_LIST_PAGE_SIZE = 10;
+
+    /**
+     * Creates an instance of Broadcaster if not already created.
+     */
+    private static function getBroadcasterInstance(): \OmegaUp\Broadcaster {
+        if (is_null(self::$broadcaster)) {
+            self::$broadcaster = new \OmegaUp\Broadcaster();
+        }
+
+        return self::$broadcaster;
+    }
 
     /**
      * Returns a list of contests
@@ -3367,50 +3381,13 @@ class Contest extends \OmegaUp\Controllers\Controller {
             )
         );
 
-        $now = \OmegaUp\Time::get();
-        if (
-            $contest->start_time->time <= $now &&
-            $contest->finish_time->time >= $now
-        ) {
-            $changeType = is_null(
-                $originalProblemsetProblem
-            ) ? 'added' : 'modified';
-
-            // Insert row into the log table
-            \OmegaUp\DAO\ContestProblemChangeLog::create(
-                new \OmegaUp\DAO\VO\ContestProblemChangeLog([
-                    'contest_id' => $contest->contest_id,
-                    'problem_id' => $problem->problem_id,
-                    'user_id' => $r->identity->user_id,
-                    'change_type' => $changeType,
-                ])
-            );
-
-            // Broadcast real-time event via WebSocket — zero DB writes,
-            // delivers ui.info() toast to all connected participants instantly.
-            try {
-                \OmegaUp\Grader::getInstance()->broadcast(
-                    $contest->alias,
-                    intval($contest->problemset_id),
-                    null,
-                    json_encode([
-                        'message' => '/contest/problem/update/',
-                        'type' => $changeType,
-                        'contest_alias' => $contest->alias,
-                        'problem_alias' => $problemAlias,
-                    ]),
-                    true,  // public broadcast to all participants
-                    null,
-                    -1,
-                    false
-                );
-            } catch (\Exception $e) {
-                self::$log->error(
-                    'Failed to broadcast contest problem change',
-                    ['exception' => $e]
-                );
-            }
-        }
+        // Broadcast and log only while the contest is active.
+        self::getBroadcasterInstance()->broadcastContestProblemChange(
+            contest: $contest,
+            problem: $problem,
+            userId: intval($r->identity->user_id),
+            changeType: is_null($originalProblemsetProblem) ? 'added' : 'modified'
+        );
 
         $solutionStatus = \OmegaUp\Controllers\Problem::SOLUTION_NOT_FOUND;
 
@@ -3477,47 +3454,13 @@ class Contest extends \OmegaUp\Controllers\Controller {
 
         // Log the problem removal and notify participants via WebSocket
         // if the contest is currently active.
-        $contest = $params['contest'];
-        $problem = $params['problem'];
-        $now = \OmegaUp\Time::get();
-        if (
-            $contest->start_time->time <= $now &&
-            $contest->finish_time->time >= $now
-        ) {
-            // Insert ONE row into the log table
-            \OmegaUp\DAO\ContestProblemChangeLog::create(
-                new \OmegaUp\DAO\VO\ContestProblemChangeLog([
-                    'contest_id' => $contest->contest_id,
-                    'problem_id' => $problem->problem_id,
-                    'user_id' => $r->identity->user_id,
-                    'change_type' => 'removed',
-                ])
-            );
-
-            // Broadcast real-time toast via WebSocket
-            try {
-                \OmegaUp\Grader::getInstance()->broadcast(
-                    $contest->alias,
-                    intval($contest->problemset_id),
-                    null,
-                    json_encode([
-                        'message' => '/contest/problem/update/',
-                        'type' => 'removed',
-                        'contest_alias' => $contest->alias,
-                        'problem_alias' => $problemAlias,
-                    ]),
-                    true,
-                    null,
-                    -1,
-                    false
-                );
-            } catch (\Exception $e) {
-                self::$log->error(
-                    'Failed to broadcast contest problem removal',
-                    ['exception' => $e]
-                );
-            }
-        }
+        // Broadcast and log only while the contest is active.
+        self::getBroadcasterInstance()->broadcastContestProblemChange(
+            contest: $params['contest'],
+            problem: $params['problem'],
+            userId: intval($r->identity->user_id),
+            changeType: 'removed'
+        );
 
         return ['status' => 'ok'];
     }
@@ -3546,7 +3489,7 @@ class Contest extends \OmegaUp\Controllers\Controller {
         }
 
         $logs = \OmegaUp\DAO\ContestProblemChangeLog::getByContestId(
-            intval($contest->contest_id)
+            $contest->contest_id
         );
 
         // Transform column names to match frontend expectations
