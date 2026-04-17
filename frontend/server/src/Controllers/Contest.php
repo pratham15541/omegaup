@@ -97,6 +97,49 @@ class Contest extends \OmegaUp\Controllers\Controller {
         return self::$broadcaster;
     }
 
+    private static function isContestActive(
+        \OmegaUp\DAO\VO\Contests $contest
+    ): bool {
+        $now = \OmegaUp\Time::get();
+
+        return $contest->start_time->time <= $now &&
+            $contest->finish_time->time >= $now;
+    }
+
+    private static function logAndBroadcastContestProblemChange(
+        \OmegaUp\DAO\VO\Contests $contest,
+        \OmegaUp\DAO\VO\Problems $problem,
+        int $userId,
+        string $changeType
+    ): void {
+        if (!self::isContestActive($contest)) {
+            return;
+        }
+
+        try {
+            \OmegaUp\DAO\ContestProblemChangeLog::create(
+                new \OmegaUp\DAO\VO\ContestProblemChangeLog([
+                    'contest_id' => $contest->contest_id,
+                    'problem_id' => $problem->problem_id,
+                    'user_id' => $userId,
+                    'change_type' => $changeType,
+                ])
+            );
+
+            self::getBroadcasterInstance()->broadcastContestProblemChange(
+                contest: $contest,
+                problem: $problem,
+                userId: $userId,
+                changeType: $changeType
+            );
+        } catch (\Exception $e) {
+            self::$log->error(
+                'Failed to log and broadcast contest problem change',
+                ['exception' => $e],
+            );
+        }
+    }
+
     /**
      * Returns a list of contests
      *
@@ -3381,8 +3424,7 @@ class Contest extends \OmegaUp\Controllers\Controller {
             )
         );
 
-        // Broadcast and log only while the contest is active.
-        self::getBroadcasterInstance()->broadcastContestProblemChange(
+        self::logAndBroadcastContestProblemChange(
             contest: $contest,
             problem: $problem,
             userId: intval($r->identity->user_id),
@@ -3452,10 +3494,7 @@ class Contest extends \OmegaUp\Controllers\Controller {
             )
         );
 
-        // Log the problem removal and notify participants via WebSocket
-        // if the contest is currently active.
-        // Broadcast and log only while the contest is active.
-        self::getBroadcasterInstance()->broadcastContestProblemChange(
+        self::logAndBroadcastContestProblemChange(
             contest: $params['contest'],
             problem: $params['problem'],
             userId: intval($r->identity->user_id),

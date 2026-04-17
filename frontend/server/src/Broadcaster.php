@@ -16,20 +16,7 @@ class Broadcaster {
         int $userId,
         string $changeType
     ): void {
-        if (!$this->isContestActive($contest)) {
-            return;
-        }
-
         try {
-            \OmegaUp\DAO\ContestProblemChangeLog::create(
-                new \OmegaUp\DAO\VO\ContestProblemChangeLog([
-                    'contest_id' => $contest->contest_id,
-                    'problem_id' => $problem->problem_id,
-                    'user_id' => $userId,
-                    'change_type' => $changeType,
-                ])
-            );
-
             $message = json_encode([
                 'message' => '/contest/problem/update/',
                 'type' => $changeType,
@@ -99,13 +86,6 @@ class Broadcaster {
             $identity,
             $clarification
         );
-    }
-
-    private function isContestActive(\OmegaUp\DAO\VO\Contests $contest): bool {
-        $now = \OmegaUp\Time::get();
-
-        return $contest->start_time->time <= $now &&
-            $contest->finish_time->time >= $now;
     }
 
     private function sendClarificationEmail(
