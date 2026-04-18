@@ -41,6 +41,7 @@ export interface SocketOptions {
   navbarProblems: types.NavbarProblemsetProblem[];
   intervalInMilliseconds: number;
   scoreMode: ScoreMode;
+  onProblemListChanged?: () => void;
 }
 
 export class EventsSocket {
@@ -67,6 +68,7 @@ export class EventsSocket {
   private readonly navbarProblems: types.NavbarProblemsetProblem[];
   private readonly intervalInMilliseconds: number;
   private readonly scoreMode: ScoreMode;
+  private readonly onProblemListChanged?: () => void;
 
   constructor({
     disableSockets = false,
@@ -85,6 +87,7 @@ export class EventsSocket {
     navbarProblems,
     intervalInMilliseconds = 5 * 60 * 1000,
     scoreMode = ScoreMode.Partial,
+    onProblemListChanged,
   }: SocketOptions) {
     this.socket = null;
 
@@ -105,6 +108,7 @@ export class EventsSocket {
     this.rankingInterval = null;
     this.intervalInMilliseconds = intervalInMilliseconds;
     this.scoreMode = scoreMode;
+    this.onProblemListChanged = onProblemListChanged;
 
     const protocol = locationProtocol === 'https:' ? 'wss:' : 'ws:';
     const host = locationHost;
@@ -134,6 +138,37 @@ export class EventsSocket {
         startTime: data.scoreboard.start_time,
         finishTime: data.scoreboard.finish_time,
       });
+    } else if (data.message == '/contest/problem/update/') {
+      this.onContestProblemUpdate(data);
+    }
+  }
+
+  private onContestProblemUpdate(data: {
+    type: string;
+    contest_alias: string;
+    problem_alias: string;
+  }) {
+    let alertMessage = '';
+    switch (data.type) {
+      case 'added':
+        alertMessage = `Contest Update: Problem "${data.problem_alias}" has been added to this contest.`;
+        break;
+      case 'modified':
+        alertMessage = `Contest Update: Problem "${data.problem_alias}" has been updated. Please refresh the page.`;
+        break;
+      case 'removed':
+        alertMessage = `Contest Update: Problem "${data.problem_alias}" has been removed from this contest.`;
+        break;
+      default:
+        return;
+    }
+
+    // Always show a non-blocking toast so all update types
+    // (added / modified / removed) are visible to contestants.
+    ui.info(alertMessage);
+
+    if (this.onProblemListChanged) {
+      this.onProblemListChanged();
     }
   }
 

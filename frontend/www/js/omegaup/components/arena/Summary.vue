@@ -55,6 +55,34 @@
         </td>
       </tr>
     </table>
+    <div v-if="showLogs" class="problem-change-log mt-3">
+      <h2>{{ T.arenaContestProblemChangeLog }}</h2>
+      <table class="table table-bordered mx-auto w-50 mb-0">
+        <thead>
+          <tr>
+            <th>{{ T.wordsTime }}</th>
+            <th>{{ T.wordsActions }}</th>
+            <th>{{ T.wordsChangedBy }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="logs.length === 0">
+            <td colspan="3" class="text-center text-muted">
+              {{ T.wordsEmpty }}
+            </td>
+          </tr>
+          <tr v-for="(log, index) in logs" :key="index">
+            <td>{{ time.formatDateTime(log.timestamp) }}</td>
+            <td>
+              <span>{{
+                formatLogMessage(log.change_type, log.problemAlias)
+              }}</span>
+            </td>
+            <td>{{ log.changedBy }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -81,6 +109,13 @@ export default class Summary extends Vue {
   @Prop() admin!: string;
   @Prop({ default: true }) showDeadlines!: boolean;
   @Prop({ default: true }) showRanking!: boolean;
+  @Prop({ default: false }) showLogs!: boolean;
+  @Prop({ default: () => [] }) logs!: {
+    change_type: string;
+    problemAlias: string;
+    changedBy: string;
+    timestamp: Date;
+  }[];
 
   T = T;
   ui = ui;
@@ -106,6 +141,27 @@ export default class Summary extends Vue {
 
   get eventDescription(): string {
     return this.description || '';
+  }
+
+  formatLogMessage(changeType: string, problemAlias: string): string {
+    const templateByChangeType: Record<string, string | undefined> = {
+      added: T.arenaContestProblemAdded,
+      modified: T.arenaContestProblemModified,
+      removed: T.arenaContestProblemRemoved,
+    };
+    const template = templateByChangeType[changeType];
+    if (!template) {
+      const fallbackLabel: Record<string, string> = {
+        added: 'Added',
+        modified: 'Modified',
+        removed: 'Removed',
+      };
+      const actionLabel = fallbackLabel[changeType] || changeType;
+      return `${actionLabel}: ${problemAlias}`;
+    }
+    return template
+      .replace('%(problemAlias)', problemAlias)
+      .replace(/\*\*/g, '');
   }
 }
 </script>

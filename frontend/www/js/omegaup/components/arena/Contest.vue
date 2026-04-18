@@ -80,6 +80,8 @@
               :window-length="contest.window_length"
               :admin="contest.director"
               :show-ranking="false"
+              :show-logs="isContestStarted && !isContestFinished"
+              :logs="logs"
             ></omegaup-arena-summary>
             <div v-else class="problem main">
               <omegaup-problem-details
@@ -307,6 +309,12 @@ export default class ArenaContest extends Vue {
   shouldShowFirstAssociatedIdentityRunWarning!: boolean;
   @Prop({ default: false }) isBlocked!: boolean;
   @Prop({ default: null }) blockedMessage!: string | null;
+  @Prop({ default: () => [] }) logs!: {
+    change_type: string;
+    problemAlias: string;
+    changedBy: string;
+    timestamp: Date;
+  }[];
 
   T = T;
   ui = ui;

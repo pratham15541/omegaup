@@ -97,8 +97,10 @@
 
               <td
                 v-for="(problem, problemIndex) in user.problems"
-                :key="problem.alias"
-                :class="problemClass(problem, problems[problemIndex].alias)"
+                :key="problem.alias || `problem-${problemIndex}`"
+                :class="
+                  problemClass(problem, problemAlias(problemIndex, problem))
+                "
               >
                 <template v-if="problem.runs > 0">
                   <div class="points">
@@ -218,6 +220,13 @@ export default class ArenaScoreboard extends Vue {
     } else {
       return alias;
     }
+  }
+
+  problemAlias(
+    problemIndex: number,
+    problem: types.ScoreboardRankingProblem,
+  ): string {
+    return this.problems[problemIndex]?.alias || problem.alias || '';
   }
 
   showUser(userIsInvited: boolean): boolean {

@@ -172,6 +172,12 @@ OmegaUp.on('ready', async () => {
         payload.shouldShowFirstAssociatedIdentityRunWarning,
       isBlocked,
       blockedMessage,
+      logs: [] as {
+        change_type: string;
+        problemAlias: string;
+        changedBy: string;
+        timestamp: Date;
+      }[],
     }),
     render: function (createElement) {
       return createElement('omegaup-arena-contest', {
@@ -208,6 +214,7 @@ OmegaUp.on('ready', async () => {
           submissionDeadline: payload.submissionDeadline,
           isBlocked: this.isBlocked,
           blockedMessage: this.blockedMessage,
+          logs: this.logs,
         },
         on: {
           'navigate-to-problem': ({
@@ -477,6 +484,85 @@ OmegaUp.on('ready', async () => {
     },
   });
 
+  const onProblemListChanged = (): void => {
+    api.Contest.details({
+      contest_alias: payload.contest.alias,
+    })
+      .then((details) => {
+        const previousProblemsByAlias: Record<
+          string,
+          types.NavbarProblemsetProblem
+        > = {};
+        for (const problem of payload.problems) {
+          previousProblemsByAlias[problem.alias] = problem;
+        }
+        const updatedProblems = details.problems.map(
+          (problem, index): types.NavbarProblemsetProblem => {
+            const previousProblem = previousProblemsByAlias[problem.alias];
+            return {
+              acceptsSubmissions: problem.accepts_submissions,
+              alias: problem.alias,
+              bestScore: previousProblem?.bestScore ?? 0,
+              hasMyRuns: previousProblem?.hasMyRuns,
+              hasRuns:
+                previousProblem?.hasRuns ?? problem.has_submissions ?? false,
+              maxScore: problem.points,
+              myBestScore: previousProblem?.myBestScore,
+              text: `${problem.letter || ui.columnName(index)}. ${
+                problem.title
+              }`,
+            };
+          },
+        );
+
+        // Keep the same array reference so socket consumers stay in sync.
+        payload.problems.splice(0, payload.problems.length, ...updatedProblems);
+        contestContestant.problems = payload.problems;
+
+        const selectedProblem = contestContestant.problem as types.NavbarProblemsetProblem | null;
+        if (!selectedProblem) {
+          return;
+        }
+
+        const refreshedProblem = payload.problems.find(
+          (problem) => problem.alias === selectedProblem.alias,
+        );
+        if (!refreshedProblem) {
+          contestContestant.problem = null;
+          contestContestant.problemInfo = null;
+          history.replaceState(
+            { selectedTab: 'problems' },
+            'resetHash',
+            '#problems',
+          );
+          return;
+        }
+
+        contestContestant.problem = refreshedProblem;
+        api.Problem.details({
+          problem_alias: refreshedProblem.alias,
+          prevent_problemset_open: false,
+          contest_alias: payload.contest.alias,
+        })
+          .then(time.remoteTimeAdapter)
+          .then((problemInfo) => {
+            problemInfo.title = refreshedProblem.text ?? '';
+            contestContestant.problemInfo = problemInfo;
+            problemsStore.commit('addProblem', problemInfo);
+          })
+          .catch(ui.ignoreError);
+      })
+      .catch(ui.ignoreError);
+
+    api.Contest.problemChangeLogs({
+      contest_alias: payload.contest.alias,
+    })
+      .then((response) => {
+        contestContestant.logs = response.logs;
+      })
+      .catch(ui.ignoreError);
+  };
+
   const socket = new EventsSocket({
     disableSockets: false,
     problemsetAlias: payload.contest.alias,
@@ -493,8 +579,27 @@ OmegaUp.on('ready', async () => {
     currentUsername: commonPayload.currentUsername,
     intervalInMilliseconds: 5 * 60 * 1000,
     scoreMode: getScoreModeEnum(payload.contest.score_mode),
+    onProblemListChanged,
   });
   socket.connect();
+
+  // Fetch contest problem change logs to populate the summary.
+  api.Contest.problemChangeLogs({
+    contest_alias: payload.contest.alias,
+  })
+    .then(
+      (response: {
+        logs: {
+          change_type: string;
+          problemAlias: string;
+          changedBy: string;
+          timestamp: Date;
+        }[];
+      }) => {
+        contestContestant.logs = response.logs;
+      },
+    )
+    .catch(ui.ignoreError);
 
   function refreshRuns(): void {
     api.Contest.runs({
