@@ -309,12 +309,7 @@ export default class ArenaContest extends Vue {
   shouldShowFirstAssociatedIdentityRunWarning!: boolean;
   @Prop({ default: false }) isBlocked!: boolean;
   @Prop({ default: null }) blockedMessage!: string | null;
-  @Prop({ default: () => [] }) logs!: {
-    change_type: string;
-    problemAlias: string;
-    changedBy: string;
-    timestamp: Date;
-  }[];
+  @Prop({ default: () => [] }) logs!: types.ContestProblemChangeLog[];
 
   T = T;
   ui = ui;

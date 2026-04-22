@@ -74,9 +74,10 @@
           <tr v-for="(log, index) in logs" :key="index">
             <td>{{ time.formatDateTime(log.timestamp) }}</td>
             <td>
-              <span>{{
-                formatLogMessage(log.change_type, log.problemAlias)
-              }}</span>
+              <omegaup-markdown
+                class="problem-change-log-message"
+                :markdown="formatLogMessage(log.change_type, log.problemAlias)"
+              ></omegaup-markdown>
             </td>
             <td>{{ log.changedBy }}</td>
           </tr>
@@ -144,30 +145,23 @@ export default class Summary extends Vue {
   }
 
   formatLogMessage(changeType: string, problemAlias: string): string {
-    const templateByChangeType: Record<string, string | undefined> = {
-      added: T.arenaContestProblemAdded,
-      modified: T.arenaContestProblemModified,
-      removed: T.arenaContestProblemRemoved,
-    };
-    const template = templateByChangeType[changeType];
-    if (!template) {
-      const fallbackLabel: Record<string, string> = {
-        added: 'Added',
-        modified: 'Modified',
-        removed: 'Removed',
-      };
-      const actionLabel = fallbackLabel[changeType] || changeType;
-      return `${actionLabel}: ${problemAlias}`;
+    switch (changeType) {
+      case 'added':
+        return ui.formatString(T.arenaContestProblemAdded, { problemAlias });
+      case 'modified':
+        return ui.formatString(T.arenaContestProblemModified, { problemAlias });
+      case 'removed':
+        return ui.formatString(T.arenaContestProblemRemoved, { problemAlias });
+      default:
+        return `${changeType}: ${problemAlias}`;
     }
-    return template
-      .replace('%(problemAlias)', problemAlias)
-      .replace(/\*\*/g, '');
   }
 }
 </script>
 
 <style lang="scss" scoped>
 @import '../../../../sass/main.scss';
+
 .summary {
   background: var(--arena-summary-background-color);
   padding: 1em;
@@ -176,6 +170,15 @@ export default class Summary extends Vue {
 h1 {
   margin: 1em auto 1em auto;
   font-size: 1.5em;
+}
+
+h2 {
+  margin: 1em auto 0.75em auto;
+  font-size: 1.2em;
+}
+
+.problem-change-log-message>>p {
+  margin-bottom: 0;
 }
 
 @media only screen and (min-width: 960px) {

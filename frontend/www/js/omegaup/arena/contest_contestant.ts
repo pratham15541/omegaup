@@ -519,6 +519,28 @@ OmegaUp.on('ready', async () => {
         payload.problems.splice(0, payload.problems.length, ...updatedProblems);
         contestContestant.problems = payload.problems;
 
+        const normalizedRanking = rankingStore.state.ranking.map(
+          (entry): types.ScoreboardRankingEntry => {
+            const byAlias: Record<string, types.ScoreboardRankingProblem> = {};
+            for (const p of entry.problems) {
+              if (p.alias) byAlias[p.alias] = p;
+            }
+            const normalizedProblems = updatedProblems.map(
+              (prob): types.ScoreboardRankingProblem =>
+                byAlias[prob.alias] ?? {
+                  alias: prob.alias,
+                  penalty: 0,
+                  percent: 0,
+                  pending: false,
+                  points: 0,
+                  runs: 0,
+                },
+            );
+            return { ...entry, problems: normalizedProblems };
+          },
+        );
+        rankingStore.commit('updateRanking', normalizedRanking);
+
         const selectedProblem = contestContestant.problem as types.NavbarProblemsetProblem | null;
         if (!selectedProblem) {
           return;

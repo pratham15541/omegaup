@@ -1,6 +1,7 @@
 import * as time from '../time';
 import * as ui from '../ui';
 import * as api from '../api';
+import T from '../lang';
 import {
   ContestClarificationType,
   refreshContestClarifications,
@@ -148,24 +149,31 @@ export class EventsSocket {
     contest_alias: string;
     problem_alias: string;
   }) {
-    let alertMessage = '';
     switch (data.type) {
       case 'added':
-        alertMessage = `Contest Update: Problem "${data.problem_alias}" has been added to this contest.`;
+        ui.info(
+          ui.formatString(T.arenaContestProblemUpdateAdded, {
+            problemAlias: data.problem_alias,
+          }),
+        );
         break;
       case 'modified':
-        alertMessage = `Contest Update: Problem "${data.problem_alias}" has been updated. Please refresh the page.`;
+        ui.info(
+          ui.formatString(T.arenaContestProblemModifiedRefresh, {
+            problemAlias: data.problem_alias,
+          }),
+        );
         break;
       case 'removed':
-        alertMessage = `Contest Update: Problem "${data.problem_alias}" has been removed from this contest.`;
+        ui.info(
+          ui.formatString(T.arenaContestProblemUpdateRemoved, {
+            problemAlias: data.problem_alias,
+          }),
+        );
         break;
       default:
         return;
     }
-
-    // Always show a non-blocking toast so all update types
-    // (added / modified / removed) are visible to contestants.
-    ui.info(alertMessage);
 
     if (this.onProblemListChanged) {
       this.onProblemListChanged();
