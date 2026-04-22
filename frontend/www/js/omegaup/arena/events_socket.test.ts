@@ -1,9 +1,11 @@
 jest.mock('../../../third_party/js/diff_match_patch.js');
 jest.mock('./ranking');
-jest.mock('../ui');
+jest.mock('../ui', () => ({
+  ...jest.requireActual('../ui'),
+  info: jest.fn(),
+}));
 
 import { types } from '../api_types';
-import T from '../lang';
 import { OmegaUp } from '../omegaup';
 import * as ui from '../ui';
 import { SocketOptions, SocketStatus, EventsSocket } from './events_socket';
@@ -16,13 +18,6 @@ import fetchMock from 'jest-fetch-mock';
 import { onRankingChanged, onRankingEvents } from './ranking';
 import { mocked } from 'ts-jest/utils';
 import { ScoreMode } from './navigation';
-
-const expectedContestProblemUpdateMessage = (
-  template: string,
-  problemAlias: string,
-): string => {
-  return template.replace('%(problemAlias)', problemAlias);
-};
 
 const navbarProblems: types.NavbarProblemsetProblem[] = [
   {
@@ -546,10 +541,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      expectedContestProblemUpdateMessage(
-        T.arenaContestProblemUpdateAdded,
-        'problem_alias',
-      ),
+      'Actualizacion del concurso: El problema "problem_alias" fue agregado a este concurso.',
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -578,10 +570,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      expectedContestProblemUpdateMessage(
-        T.arenaContestProblemModifiedRefresh,
-        'problem_alias',
-      ),
+      'Actualizacion del concurso: El problema "problem_alias" fue actualizado. Por favor recarga la pagina.',
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -610,10 +599,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      expectedContestProblemUpdateMessage(
-        T.arenaContestProblemUpdateRemoved,
-        'problem_alias',
-      ),
+      'Actualizacion del concurso: El problema "problem_alias" fue eliminado de este concurso.',
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -641,10 +627,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      expectedContestProblemUpdateMessage(
-        T.arenaContestProblemUpdateAdded,
-        'problem_alias',
-      ),
+      'Actualizacion del concurso: El problema "problem_alias" fue agregado a este concurso.',
     );
 
     uiInfoSpy.mockRestore();
