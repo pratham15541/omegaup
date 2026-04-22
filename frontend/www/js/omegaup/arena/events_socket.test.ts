@@ -3,6 +3,7 @@ jest.mock('./ranking');
 jest.mock('../ui');
 
 import { types } from '../api_types';
+import T from '../lang';
 import { OmegaUp } from '../omegaup';
 import * as ui from '../ui';
 import { SocketOptions, SocketStatus, EventsSocket } from './events_socket';
@@ -15,6 +16,13 @@ import fetchMock from 'jest-fetch-mock';
 import { onRankingChanged, onRankingEvents } from './ranking';
 import { mocked } from 'ts-jest/utils';
 import { ScoreMode } from './navigation';
+
+const expectedContestProblemUpdateMessage = (
+  template: string,
+  problemAlias: string,
+): string => {
+  return template.replace('%(problemAlias)', problemAlias);
+};
 
 const navbarProblems: types.NavbarProblemsetProblem[] = [
   {
@@ -538,7 +546,10 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Contest Update: Problem "problem_alias" has been added to this contest.',
+      expectedContestProblemUpdateMessage(
+        T.arenaContestProblemUpdateAdded,
+        'problem_alias',
+      ),
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -567,7 +578,10 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Contest Update: Problem "problem_alias" has been updated. Please refresh the page.',
+      expectedContestProblemUpdateMessage(
+        T.arenaContestProblemModifiedRefresh,
+        'problem_alias',
+      ),
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -596,7 +610,10 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Contest Update: Problem "problem_alias" has been removed from this contest.',
+      expectedContestProblemUpdateMessage(
+        T.arenaContestProblemUpdateRemoved,
+        'problem_alias',
+      ),
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -624,7 +641,10 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Contest Update: Problem "problem_alias" has been added to this contest.',
+      expectedContestProblemUpdateMessage(
+        T.arenaContestProblemUpdateAdded,
+        'problem_alias',
+      ),
     );
 
     uiInfoSpy.mockRestore();
