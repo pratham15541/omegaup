@@ -145,8 +145,7 @@ export class EventsSocket {
   }
 
   private onContestProblemUpdate(data: {
-    type: string;
-    contest_alias: string;
+    type: 'added' | 'modified' | 'removed';
     problem_alias: string;
   }) {
     switch (data.type) {

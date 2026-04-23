@@ -89,6 +89,7 @@
 
 <script lang="ts">
 import { Vue, Component, Prop } from 'vue-property-decorator';
+import { types } from '../../api_types';
 import T from '../../lang';
 import * as ui from '../../ui';
 import * as time from '../../time';
@@ -111,12 +112,7 @@ export default class Summary extends Vue {
   @Prop({ default: true }) showDeadlines!: boolean;
   @Prop({ default: true }) showRanking!: boolean;
   @Prop({ default: false }) showLogs!: boolean;
-  @Prop({ default: () => [] }) logs!: {
-    change_type: string;
-    problemAlias: string;
-    changedBy: string;
-    timestamp: Date;
-  }[];
+  @Prop({ default: () => [] }) logs!: types.ContestProblemChangeLog[];
 
   T = T;
   ui = ui;

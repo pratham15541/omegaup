@@ -172,12 +172,7 @@ OmegaUp.on('ready', async () => {
         payload.shouldShowFirstAssociatedIdentityRunWarning,
       isBlocked,
       blockedMessage,
-      logs: [] as {
-        change_type: string;
-        problemAlias: string;
-        changedBy: string;
-        timestamp: Date;
-      }[],
+      logs: [] as types.ContestProblemChangeLog[],
     }),
     render: function (createElement) {
       return createElement('omegaup-arena-contest', {
@@ -609,18 +604,9 @@ OmegaUp.on('ready', async () => {
   api.Contest.problemChangeLogs({
     contest_alias: payload.contest.alias,
   })
-    .then(
-      (response: {
-        logs: {
-          change_type: string;
-          problemAlias: string;
-          changedBy: string;
-          timestamp: Date;
-        }[];
-      }) => {
-        contestContestant.logs = response.logs;
-      },
-    )
+    .then((response: { logs: types.ContestProblemChangeLog[] }) => {
+      contestContestant.logs = response.logs;
+    })
     .catch(ui.ignoreError);
 
   function refreshRuns(): void {
