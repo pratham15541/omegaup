@@ -541,7 +541,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Actualizacion del concurso: El problema "problem_alias" fue agregado a este concurso.',
+      'Actualización del concurso: El problema "problem_alias" fue agregado a este concurso.',
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -570,7 +570,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Actualizacion del concurso: El problema "problem_alias" fue actualizado. Por favor recarga la pagina.',
+      'Actualización del concurso: El problema "problem_alias" fue actualizado. Por favor recarga la página.',
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -599,7 +599,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Actualizacion del concurso: El problema "problem_alias" fue eliminado de este concurso.',
+      'Actualización del concurso: El problema "problem_alias" fue eliminado de este concurso.',
     );
     expect(onProblemListChangedMock).toHaveBeenCalledTimes(1);
 
@@ -627,7 +627,7 @@ describe('EventsSocket', () => {
 
     expect(socket.socketStatus).toEqual(SocketStatus.Connected);
     expect(uiInfoSpy).toHaveBeenCalledWith(
-      'Actualizacion del concurso: El problema "problem_alias" fue agregado a este concurso.',
+      'Actualización del concurso: El problema "problem_alias" fue agregado a este concurso.',
     );
 
     uiInfoSpy.mockRestore();
