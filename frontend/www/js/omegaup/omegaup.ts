@@ -470,6 +470,11 @@ export namespace omegaup {
             this.username = data.session.identity.username;
             this.identity = data.session.identity;
             this.email = data.session.email;
+            // Ensure we only keep one active logout listener for this page.
+            if (this._cleanupLogoutListener) {
+              this._cleanupLogoutListener();
+              this._cleanupLogoutListener = null;
+            }
             this._cleanupLogoutListener = initLogoutListener(() => {
               window.location.href = '/';
             });
